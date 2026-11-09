@@ -2,7 +2,7 @@
 
 > Tiny, zero-dependency runner for linters and formatters on Git staged files.
 
-## 🚀 Usage
+## Usage
 
 ### CLI
 
