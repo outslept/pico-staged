@@ -5,9 +5,9 @@ import { executor } from "./executor.ts";
 import type { ExecutorOptions, GitFileBuckets, GitPaths, GitStatusEntry } from "./types.ts";
 import { toArray } from "./utils.ts";
 
-export const STAGED_CODE = 1 << 0;
-export const CHANGED_CODE = 1 << 1;
-export const DELETED_CODE = 1 << 2;
+const STAGED_CODE = 1 << 0;
+const CHANGED_CODE = 1 << 1;
+const DELETED_CODE = 1 << 2;
 
 const STATUS_MAP: Record<string, number> = {
   " ": 0,
