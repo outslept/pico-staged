@@ -59,7 +59,7 @@ export function globToRegex(
       }
       regex += str;
     }
-    if (last && only !== "suffix") {
+    if (last && only !== "suffix" && !flags.includes("g")) {
       regex += `${regex.endsWith(SLASH) ? "" : `${SLASH}?`}$`;
     }
   };
@@ -231,7 +231,7 @@ export function globToRegex(
           add(GLOBSTAR, { last: nextChar === undefined, split: true });
           i++;
         } else {
-          add(globstar ? WILDCARD : GLOBSTAR_FALSE_WILDCARD, { last });
+          add(globstar ? WILDCARD : GLOBSTAR_FALSE_WILDCARD, { last: nextChar === undefined });
         }
         break;
       }
@@ -244,9 +244,7 @@ export function globToRegex(
     i++;
   }
 
-  if (!flags.includes("g")) {
-    regex = `^${regex}`;
-  }
+  regex = `^${regex}`;
 
   return { regex: new RegExp(regex, flags) };
 }
