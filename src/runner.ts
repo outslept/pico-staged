@@ -1,25 +1,25 @@
-import process from 'node:process'
-import { createCmdRunner } from './cmd-runner.ts'
-import { PicoStagedError } from './errors.ts'
-import { createGit } from './git.ts'
-import { createGitWorkflow } from './git-workflow.ts'
-import { createRenderer } from './renderer.ts'
-import type { FileBucketType, PicoStagedConfigObject, PipelineTask } from './types.ts'
+import process from "node:process";
+import { createCmdRunner } from "./cmd-runner.ts";
+import { PicoStagedError } from "./errors.ts";
+import { createGit } from "./git.ts";
+import { createGitWorkflow } from "./git-workflow.ts";
+import { createRenderer } from "./renderer.ts";
+import type { FileBucketType, PicoStagedConfigObject, PipelineTask } from "./types.ts";
 
 export interface RunnerContextOptions {
-  allowEmpty?: boolean
-  bail?: boolean
-  config?: PicoStagedConfigObject
-  cwd?: string
-  diff?: boolean | string | [string, string] | string[]
-  isTTY?: boolean
-  quiet?: boolean
-  stream?: NodeJS.WritableStream
-  unstaged?: boolean
+  allowEmpty?: boolean;
+  bail?: boolean;
+  config?: PicoStagedConfigObject;
+  cwd?: string;
+  diff?: boolean | string | [string, string] | string[];
+  isTTY?: boolean;
+  quiet?: boolean;
+  stream?: NodeJS.WritableStream;
+  unstaged?: boolean;
 }
 
 export interface Runner {
-  run: () => Promise<void>
+  run: () => Promise<void>;
 }
 
 export function createRunner({
@@ -33,30 +33,30 @@ export function createRunner({
   stream = process.stderr,
   unstaged = false,
 }: RunnerContextOptions = {}): Runner {
-  const renderer = createRenderer(stream, { isTTY, quiet })
-  const git = createGit(cwd)
+  const renderer = createRenderer(stream, { isTTY, quiet });
+  const git = createGit(cwd);
 
-  const type: FileBucketType = diff ? 'changed' : unstaged ? 'unstaged' : 'staged'
+  const type: FileBucketType = diff ? "changed" : unstaged ? "unstaged" : "staged";
 
   return {
     async run(): Promise<void> {
-      const { root: rootPath, dot: dotPath } = await git.getGitPaths()
+      const { root: rootPath, dot: dotPath } = await git.getGitPaths();
       if (!rootPath) {
-        throw new PicoStagedError('noGitRepo')
+        throw new PicoStagedError("noGitRepo");
       }
 
-      const staged = await git.stagedFiles({ cwd: rootPath })
-      const unstagedBuckets = await git.unstagedFiles({ cwd: rootPath })
+      const staged = await git.stagedFiles({ cwd: rootPath });
+      const unstagedBuckets = await git.unstagedFiles({ cwd: rootPath });
 
       const targetBucket =
-        type === 'changed'
+        type === "changed"
           ? await git.changedFiles(diff, { cwd: rootPath })
-          : type === 'unstaged'
+          : type === "unstaged"
             ? unstagedBuckets
-            : staged
+            : staged;
 
       if (targetBucket.working.length === 0) {
-        throw new PicoStagedError('noFiles', type)
+        throw new PicoStagedError("noFiles", type);
       }
 
       const cmdRunner = createCmdRunner({
@@ -66,57 +66,59 @@ export function createRunner({
         rootPath,
         bail,
         files: targetBucket.working,
-      })
+      });
 
-      const cmdTasks = await cmdRunner.generateCmdTasks()
+      const cmdTasks = await cmdRunner.generateCmdTasks();
       if (!cmdTasks.some((group) => group.fileCount > 0)) {
-        throw new PicoStagedError('noMatchingFiles')
+        throw new PicoStagedError("noMatchingFiles");
       }
 
-      if (type === 'changed' || type === 'unstaged') {
+      if (type === "changed" || type === "unstaged") {
         const singleTask: PipelineTask = {
           title: `Running tasks for ${type} files`,
           tasks: cmdTasks,
           task: (t) => cmdRunner.run(t),
-        }
+        };
 
-        renderer.add([singleTask])
-        renderer.start()
-        singleTask.status = 'run'
-        renderer.update(singleTask)
+        renderer.add([singleTask]);
+        renderer.start();
+        singleTask.status = "run";
+        renderer.update(singleTask);
 
         try {
-          await singleTask.task(singleTask)
-          singleTask.status = 'done'
-          renderer.update(singleTask)
+          await singleTask.task(singleTask);
+          singleTask.status = "done";
+          renderer.update(singleTask);
         } catch (err) {
-          singleTask.status = 'fail'
-          renderer.update(singleTask)
-          throw err
+          singleTask.status = "fail";
+          renderer.update(singleTask);
+          throw err;
         } finally {
-          renderer.stop()
+          renderer.stop();
         }
-        return
+        return;
       }
 
-      const workflow = createGitWorkflow({ allowEmpty, dotPath, rootPath })
-      let cmdTasksFailed = false
-      let gitApplyError = false
-      let mergeStatusError = false
+      const workflow = createGitWorkflow({ allowEmpty, dotPath, rootPath });
+      let cmdTasksFailed = false;
+      let gitApplyError = false;
+      let mergeStatusError = false;
 
-      const partlyStagedFiles = staged.working.filter((file) => unstagedBuckets.changed.includes(file))
-      const hasPartlyStaged = partlyStagedFiles.length > 0
+      const partlyStagedFiles = staged.working.filter((file) =>
+        unstagedBuckets.changed.includes(file),
+      );
+      const hasPartlyStaged = partlyStagedFiles.length > 0;
       const hasInitialStateBackup =
-        partlyStagedFiles.length + staged.deleted.length + unstagedBuckets.deleted.length > 0
+        partlyStagedFiles.length + staged.deleted.length + unstagedBuckets.deleted.length > 0;
 
       const pipeline: PipelineTask[] = [
         {
-          title: 'Preparing pico-staged',
+          title: "Preparing pico-staged",
           skip: () => !hasInitialStateBackup,
           task: () => workflow.backupOriginalState(),
         },
         {
-          title: 'Backing up unstaged changes for staged files',
+          title: "Backing up unstaged changes for staged files",
           skip: () => !hasPartlyStaged,
           task: () => workflow.backupUnstagedFiles(partlyStagedFiles),
         },
@@ -126,69 +128,72 @@ export function createRunner({
           task: (t) => cmdRunner.run(t),
         },
         {
-          title: 'Applying modifications from tasks',
+          title: "Applying modifications from tasks",
           skip: () => cmdTasksFailed,
           task: () => workflow.applyModifications(staged.working),
         },
         {
-          title: 'Restoring unstaged changes for staged files',
+          title: "Restoring unstaged changes for staged files",
           skip: () => !hasPartlyStaged || cmdTasksFailed || gitApplyError,
           task: () => workflow.restoreUnstagedFiles(partlyStagedFiles),
         },
         {
-          title: 'Restoring to original state because of errors',
+          title: "Restoring to original state because of errors",
           skip: () =>
             !hasInitialStateBackup || !(cmdTasksFailed || gitApplyError || mergeStatusError),
           task: () => workflow.restoreOriginalState(),
         },
         {
-          title: 'Cleaning up temporary patch files',
+          title: "Cleaning up temporary patch files",
           skip: () =>
-            !(workflow.hasPatch(workflow.patch.original) || workflow.hasPatch(workflow.patch.unstaged)),
+            !(
+              workflow.hasPatch(workflow.patch.original) ||
+              workflow.hasPatch(workflow.patch.unstaged)
+            ),
           task: () => workflow.cleanUp(),
         },
-      ]
+      ];
 
-      let runnerError: unknown
-      renderer.add(pipeline)
-      renderer.start()
+      let runnerError: unknown;
+      renderer.add(pipeline);
+      renderer.start();
 
       for (const step of pipeline) {
         if (step.skip?.()) {
-          step.status = 'skip'
-          renderer.update(step)
-          continue
+          step.status = "skip";
+          renderer.update(step);
+          continue;
         }
 
-        step.status = 'run'
-        renderer.update(step)
+        step.status = "run";
+        renderer.update(step);
 
         try {
-          await step.task(step)
-          step.status = 'done'
-          renderer.update(step)
+          await step.task(step);
+          step.status = "done";
+          renderer.update(step);
         } catch (err) {
-          step.status = 'fail'
-          renderer.update(step)
+          step.status = "fail";
+          renderer.update(step);
 
-          if (step.title.startsWith('Running tasks')) {
-            cmdTasksFailed = true
-          } else if (step.title.startsWith('Applying modifications')) {
-            gitApplyError = true
-          } else if (step.title.startsWith('Restoring unstaged')) {
-            mergeStatusError = true
+          if (step.title.startsWith("Running tasks")) {
+            cmdTasksFailed = true;
+          } else if (step.title.startsWith("Applying modifications")) {
+            gitApplyError = true;
+          } else if (step.title.startsWith("Restoring unstaged")) {
+            mergeStatusError = true;
           }
 
-          runnerError = err
+          runnerError = err;
         }
       }
 
-      await workflow.cleanUp()
-      renderer.stop()
+      await workflow.cleanUp();
+      renderer.stop();
 
       if (runnerError) {
-        throw runnerError
+        throw runnerError;
       }
     },
-  }
+  };
 }
