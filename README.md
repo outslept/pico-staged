@@ -61,10 +61,7 @@ pico-staged --config ./config/pico-staged.mjs
 ```json
 {
   "pico-staged": {
-    "*.{js,ts}": [
-      "oxfmt",
-      "oxlint --fix"
-    ],
+    "*.{js,ts}": ["oxfmt", "oxlint --fix"],
     "*.{json,md}": "oxfmt"
   }
 }
@@ -75,15 +72,12 @@ pico-staged --config ./config/pico-staged.mjs
 Use `defineConfig` for full IDE autocompletion and type checking:
 
 ```js
-import { defineConfig } from 'pico-staged'
+import { defineConfig } from "pico-staged";
 
 export default defineConfig({
-  'src/**/*.ts': [
-    'oxfmt',
-    'oxlint --type-aware --type-check --fix',
-  ],
-  '*.{json,md,yml}': 'oxfmt',
-})
+  "src/**/*.ts": ["oxfmt", "oxlint --type-aware --type-check --fix"],
+  "*.{json,md,yml}": "oxfmt",
+});
 ```
 
 ### Dynamic Function Tasks
@@ -91,24 +85,21 @@ export default defineConfig({
 When a task is defined as a function, `pico-staged` passes `{ filenames, type }` Instead of automatically appending filenames to the command string, giving you full control over arguments (useful for whole-project typechecks or custom batching):
 
 ```js
-import { defineConfig } from 'pico-staged'
+import { defineConfig } from "pico-staged";
 
 export default defineConfig({
-  'src/**/*.ts': ({ filenames }) => [
-    `oxfmt ${filenames.join(' ')}`,
-    'tsc --noEmit',
-  ],
-})
+  "src/**/*.ts": ({ filenames }) => [`oxfmt ${filenames.join(" ")}`, "tsc --noEmit"],
+});
 ```
 
 You can also export a single top-level function to handle all matched files (`*`):
 
 ```js
-import { defineConfig } from 'pico-staged'
+import { defineConfig } from "pico-staged";
 
 export default defineConfig(async ({ filenames, type }) => {
-  return [`oxlint ${filenames.join(' ')}`]
-})
+  return [`oxlint ${filenames.join(" ")}`];
+});
 ```
 
 ## Glob Matching
@@ -125,7 +116,7 @@ export default defineConfig(async ({ filenames, type }) => {
 ## Programmatic API
 
 ```ts
-import { picoStaged } from 'pico-staged'
+import { picoStaged } from "pico-staged";
 
 await picoStaged({
   cwd: process.cwd(),
@@ -135,20 +126,20 @@ await picoStaged({
   unstaged: false,
   diff: false,
   config: {
-    '*.ts': ['oxfmt', 'oxlint --fix'],
+    "*.ts": ["oxfmt", "oxlint --fix"],
   },
-})
+});
 ```
 
 ### Options (`PicoStagedOptions`)
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `cwd` | `string` | `process.cwd()` | Working directory to resolve files and config from. |
-| `config` | `string \| PicoStagedConfig` | `undefined` | Explicit config object, function, or path to config file. |
-| `allowEmpty` | `boolean` | `false` | Allow empty commits when tasks revert all staged changes. |
-| `bail` | `boolean` | `false` | Abort all running tasks on the first failure. |
-| `unstaged` | `boolean` | `false` | Run tasks on unstaged files instead of staged files. |
-| `diff` | `boolean \| string \| string[]` | `false` | Run tasks on files changed in `git diff`. |
-| `quiet` | `boolean` | `false` | Suppress all terminal output. |
-| `stream` | `NodeJS.WritableStream` | `process.stderr` | Output stream for the renderer and error reporter. |
+| Option       | Type                            | Default          | Description                                               |
+| :----------- | :------------------------------ | :--------------- | :-------------------------------------------------------- |
+| `cwd`        | `string`                        | `process.cwd()`  | Working directory to resolve files and config from.       |
+| `config`     | `string \| PicoStagedConfig`    | `undefined`      | Explicit config object, function, or path to config file. |
+| `allowEmpty` | `boolean`                       | `false`          | Allow empty commits when tasks revert all staged changes. |
+| `bail`       | `boolean`                       | `false`          | Abort all running tasks on the first failure.             |
+| `unstaged`   | `boolean`                       | `false`          | Run tasks on unstaged files instead of staged files.      |
+| `diff`       | `boolean \| string \| string[]` | `false`          | Run tasks on files changed in `git diff`.                 |
+| `quiet`      | `boolean`                       | `false`          | Suppress all terminal output.                             |
+| `stream`     | `NodeJS.WritableStream`         | `process.stderr` | Output stream for the renderer and error reporter.        |

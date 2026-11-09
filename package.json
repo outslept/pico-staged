@@ -12,13 +12,13 @@
     "type": "git",
     "url": "git+https://github.com/author/pico-staged.git"
   },
+  "bin": {
+    "pico-staged": "./dist/bin.js"
+  },
   "files": [
     "dist"
   ],
   "type": "module",
-  "bin": {
-    "pico-staged": "./dist/bin.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
