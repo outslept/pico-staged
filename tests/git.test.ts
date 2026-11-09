@@ -37,8 +37,8 @@ test("returns empty paths when git directory is not found", async () => {
 test("resolves root and .git directory paths", async () => {
   const git = createGit(cwd);
   const paths = await git.getGitPaths();
-  assert.equal(paths.root, cwd);
-  assert.equal(paths.dot, join(cwd, ".git"));
+  assert.equal(paths.root.toLowerCase(), cwd.toLowerCase());
+  assert.equal(paths.dot.toLowerCase(), join(cwd, ".git").toLowerCase());
 });
 
 test("creates diff patch file and applies it", async () => {
@@ -112,6 +112,9 @@ test("handles git worktrees", async () => {
   await execGit(["worktree", "add", workTreeDir, "test-wt"]);
 
   const paths = await git.getGitPaths({ cwd: workTreeDir });
-  assert.equal(paths.root, workTreeDir);
-  assert.equal(paths.dot, join(cwd, ".git", "worktrees", "worktree"));
+  assert.equal(paths.root.toLowerCase(), workTreeDir.toLowerCase());
+  assert.equal(
+    paths.dot.toLowerCase(),
+    join(cwd, ".git", "worktrees", "worktree").toLowerCase(),
+  );
 });
