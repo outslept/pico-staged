@@ -40,6 +40,7 @@ const POSIX_CLASSES: Record<string, string> = {
 const POSIX_LENGTH = 10;
 const GLOBSTAR = "((?:[^/]*(?:/|$))*)";
 const WILDCARD = "([^/]*)";
+const GLOBSTAR_FALSE_WILDCARD = "(.*)";
 
 export function globToRegex(
   glob: string,
@@ -79,14 +80,16 @@ export function globToRegex(
         break;
 
       case CLOSE_PAREN:
-        add(c, { last });
         if (ext.length > 0) {
+          add(c, { last });
           const type = ext.pop() ?? "";
           if (type === BANG) {
-            add(")[^/]*)$", { last });
-          } else {
-            add(type === AT ? "" : type, { last });
+            add("[^/]*)", { last });
+          } else if (type !== AT) {
+            add(type, { last });
           }
+        } else {
+          add(BACKSLASH + c, { last });
         }
         break;
 
@@ -101,6 +104,8 @@ export function globToRegex(
       case PLUS:
         if (n === OPEN_PAREN && extended) {
           ext.push(c);
+          add(OPEN_PAREN, { last });
+          i++;
           break;
         }
         add(BACKSLASH + c, { last });
@@ -109,6 +114,8 @@ export function globToRegex(
       case AT:
         if (n === OPEN_PAREN && extended) {
           ext.push(c);
+          add(OPEN_PAREN, { last });
+          i++;
           break;
         }
         add(BACKSLASH + c, { last });
@@ -122,7 +129,7 @@ export function globToRegex(
           }
           if (n === OPEN_PAREN) {
             ext.push(c);
-            add("(?!", { last });
+            add("((?!", { last });
             i++;
             break;
           }
@@ -136,6 +143,8 @@ export function globToRegex(
         if (extended) {
           if (n === OPEN_PAREN) {
             ext.push(c);
+            add(OPEN_PAREN, { last });
+            i++;
           } else {
             add(DOT, { last });
           }
@@ -200,6 +209,8 @@ export function globToRegex(
       case STAR: {
         if (n === OPEN_PAREN && extended) {
           ext.push(c);
+          add(OPEN_PAREN, { last });
+          i++;
           break;
         }
 
@@ -220,7 +231,7 @@ export function globToRegex(
           add(GLOBSTAR, { last: nextChar === undefined, split: true });
           i++;
         } else {
-          add(WILDCARD, { last });
+          add(globstar ? WILDCARD : GLOBSTAR_FALSE_WILDCARD, { last });
         }
         break;
       }
