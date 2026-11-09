@@ -113,8 +113,5 @@ test("handles git worktrees", async () => {
 
   const paths = await git.getGitPaths({ cwd: workTreeDir });
   assert.equal(paths.root.toLowerCase(), workTreeDir.toLowerCase());
-  assert.equal(
-    paths.dot.toLowerCase(),
-    join(cwd, ".git", "worktrees", "worktree").toLowerCase(),
-  );
+  assert.equal(paths.dot.toLowerCase(), join(cwd, ".git", "worktrees", "worktree").toLowerCase());
 });
