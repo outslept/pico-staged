@@ -3,10 +3,10 @@ import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { createGit } from "../src/git.ts";
-import { appendFile, fixture, makeDir, removeFile, writeFile } from "./utils/index.ts";
+import { appendFile, createTempDir, removeFile, writeFile } from "./utils/index.ts";
 
-const cwd = fixture("simple/git-test");
-const patchPath = join(cwd, "pico-staged.patch");
+let cwd = "";
+let patchPath = "";
 
 async function execGit(args: string[]): Promise<void> {
   const git = createGit(cwd);
@@ -14,8 +14,8 @@ async function execGit(args: string[]): Promise<void> {
 }
 
 beforeEach(async () => {
-  await removeFile(cwd);
-  await makeDir(cwd);
+  cwd = await createTempDir("pico-git-test-");
+  patchPath = join(cwd, "pico-staged.patch");
   await execGit(["init"]);
   await execGit(["config", "user.name", "test"]);
   await execGit(["config", "user.email", "test@test.com"]);
@@ -29,8 +29,7 @@ afterEach(async () => {
 });
 
 test("returns empty paths when git directory is not found", async () => {
-  const nonGitDir = resolve(cwd, "..", "..", "..", "..");
-  const git = createGit(nonGitDir);
+  const git = createGit(cwd);
   const paths = await git.getGitPaths({ cwd: "Z:\\non-existent-path-pico" });
   assert.deepEqual(paths, { root: "", dot: "" });
 });

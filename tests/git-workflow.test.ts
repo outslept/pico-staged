@@ -4,9 +4,9 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { createGit } from "../src/git.ts";
 import { createGitWorkflow } from "../src/git-workflow.ts";
-import { appendFile, fixture, makeDir, removeFile, writeFile } from "./utils/index.ts";
+import { appendFile, createTempDir, removeFile, writeFile } from "./utils/index.ts";
 
-const cwd = fixture("simple/git-workflow-test");
+let cwd = "";
 
 async function execGit(args: string[]): Promise<string> {
   const git = createGit(cwd);
@@ -14,8 +14,7 @@ async function execGit(args: string[]): Promise<string> {
 }
 
 beforeEach(async () => {
-  await removeFile(cwd);
-  await makeDir(cwd);
+  cwd = await createTempDir("pico-workflow-test-");
   await execGit(["init"]);
   await execGit(["config", "user.name", "test"]);
   await execGit(["config", "user.email", "test@test.com"]);

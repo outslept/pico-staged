@@ -1,23 +1,25 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { createCmdRunner } from "../src/cmd-runner.ts";
-import { picoStaged } from "../src/index.ts";
 import { createGit } from "../src/git.ts";
+import { picoStaged } from "../src/index.ts";
 import type { PipelineTask } from "../src/types.ts";
 import {
   appendFile,
   createStdout,
-  fixture,
+  createTempDir,
   makeDir,
   removeFile,
   writeFile,
 } from "./utils/index.ts";
 
-const cwd = fixture("simple/runner-e2e-test");
-const srcDir = fixture("simple/runner-e2e-test/src/foo");
+let cwd = "";
+let srcDir = "";
 
 beforeEach(async () => {
-  await removeFile(cwd);
+  cwd = await createTempDir("pico-runner-e2e-");
+  srcDir = join(cwd, "src", "foo");
   await makeDir(srcDir);
   await writeFile("a.js", "const a = 1;\n", srcDir);
   await writeFile("b.js", "const b = 1;\n", srcDir);

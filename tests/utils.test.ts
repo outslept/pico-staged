@@ -63,6 +63,7 @@ test("getForceColorLevel respects NO_COLOR and FORCE_COLOR", () => {
   process.env.FORCE_COLOR = "3";
   assert.equal(getForceColorLevel(), 3);
 
+  delete process.env.FORCE_COLOR;
   process.env.NO_COLOR = "1";
   assert.equal(getForceColorLevel(), false);
 });

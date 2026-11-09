@@ -1,10 +1,23 @@
-import { appendFile as fsAppendFile, mkdir, rm, writeFile as fsWriteFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import {
+  appendFile as fsAppendFile,
+  mkdir,
+  mkdtemp,
+  rm,
+  writeFile as fsWriteFile,
+} from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 const DIRNAME = dirname(fileURLToPath(import.meta.url));
+
+export async function createTempDir(prefix = "pico-staged-"): Promise<string> {
+  const raw = await mkdtemp(join(tmpdir(), prefix));
+  return realpathSync(raw);
+}
 
 export async function appendFile(
   filename: string,
@@ -28,7 +41,7 @@ export async function writeFile(
 
 export async function removeFile(dir: string): Promise<void> {
   if (dir) {
-    await rm(dir, { recursive: true, force: true });
+    await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
