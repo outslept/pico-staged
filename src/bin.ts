@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { picoStaged } from "./index.ts";
 import type { PicoStagedOptions } from "./types.ts";
 import { getForceColorLevel, showVersion } from "./utils.ts";
@@ -78,4 +81,9 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<vo
   }
 }
 
-runCli();
+if (
+  process.argv[1] &&
+  realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))
+) {
+  runCli();
+}
