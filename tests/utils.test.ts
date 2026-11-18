@@ -45,7 +45,7 @@ test("stringArgvToArray parses quoted and unquoted arguments", () => {
   assert.deepEqual(stringArgvToArray(""), []);
 });
 
-test("getForceColorLevel respects NO_COLOR and FORCE_COLOR", () => {
+test("getForceColorLevel respects NO_COLOR, FORCE_COLOR, and fallback color env vars", () => {
   assert.equal(getForceColorLevel(), false);
 
   process.env.FORCE_COLOR = "1";
@@ -64,6 +64,10 @@ test("getForceColorLevel respects NO_COLOR and FORCE_COLOR", () => {
   assert.equal(getForceColorLevel(), 3);
 
   delete process.env.FORCE_COLOR;
+  process.env.CLICOLOR_FORCE = "1";
+  assert.equal(getForceColorLevel(), 1);
+
+  delete process.env.CLICOLOR_FORCE;
   process.env.NO_COLOR = "1";
   assert.equal(getForceColorLevel(), false);
 });
