@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { createGit } from "../src/git.ts";
@@ -16,9 +17,10 @@ async function execGit(args: string[]): Promise<string> {
 beforeEach(async () => {
   cwd = await createTempDir("pico-workflow-test-");
   await execGit(["init"]);
+  await execGit(["config", "core.autocrlf", "false"]);
   await execGit(["config", "user.name", "test"]);
   await execGit(["config", "user.email", "test@test.com"]);
-  await appendFile("README.md", "# Test\n", cwd);
+  await appendFile("README.md", "line1\nline2\n", cwd);
   await execGit(["add", "README.md"]);
   await execGit(["commit", "-m", "initial commit"]);
 });
@@ -34,7 +36,7 @@ test("creates and cleans up original and unstaged patches", async () => {
     rootPath: cwd,
   });
 
-  await writeFile("README.md", "# Test\n# Modified\n", cwd);
+  await writeFile("README.md", "line1\nline2\nmodified\n", cwd);
   await workflow.backupOriginalState();
   assert.equal(workflow.hasPatch(workflow.patch.original), true);
 
@@ -49,19 +51,67 @@ test("creates and cleans up original and unstaged patches", async () => {
   assert.equal(existsSync(workflow.patch.unstaged), false);
 });
 
-test("applies modifications and prevents empty commits unless allowed", async () => {
+test("restores unstaged changes cleanly and throws on unresolvable conflict", async () => {
+  const readmePath = join(cwd, "README.md");
   const workflow = createGitWorkflow({
     dotPath: resolve(cwd, ".git"),
     allowEmpty: false,
     rootPath: cwd,
   });
 
+  await writeFile("README.md", "line1\nline2\nunstaged-addition\n", cwd);
+  await workflow.backupUnstagedFiles([readmePath]);
+  assert.equal(await readFile(readmePath, "utf8"), "line1\nline2\n");
+
+  await workflow.restoreUnstagedFiles([readmePath]);
+  assert.equal(await readFile(readmePath, "utf8"), "line1\nline2\nunstaged-addition\n");
+
+  await writeFile(workflow.patch.unstaged, "invalid patch content\n");
   await assert.rejects(
-    () => workflow.applyModifications([join(cwd, "README.md")]),
+    () => workflow.restoreUnstagedFiles([readmePath]),
+    /Merge conflict!!! Unstaged changes not restored\./,
+  );
+});
+
+test("applies modifications, handles allowEmpty, and supports unborn HEAD", async () => {
+  const readmePath = join(cwd, "README.md");
+  const strictWorkflow = createGitWorkflow({
+    dotPath: resolve(cwd, ".git"),
+    allowEmpty: false,
+    rootPath: cwd,
+  });
+
+  await assert.rejects(
+    () => strictWorkflow.applyModifications([readmePath]),
     /Prevented an empty git commit!/,
   );
 
-  await writeFile("README.md", "# Test\n# Changed\n", cwd);
-  await workflow.applyModifications([join(cwd, "README.md")]);
+  const emptyAllowedWorkflow = createGitWorkflow({
+    dotPath: resolve(cwd, ".git"),
+    allowEmpty: true,
+    rootPath: cwd,
+  });
+  await emptyAllowedWorkflow.applyModifications([readmePath]);
+
+  await writeFile("README.md", "line1\nchanged\n", cwd);
+  await strictWorkflow.applyModifications([readmePath]);
   assert.equal((await execGit(["diff", "--name-only", "--staged"])).trim(), "README.md");
+
+  const unbornDir = await createTempDir("pico-unborn-");
+  try {
+    const unbornGit = createGit(unbornDir);
+    await unbornGit.exec(["init"]);
+    await writeFile("new.txt", "hello\n", unbornDir);
+    await unbornGit.add(["new.txt"]);
+
+    const unbornWorkflow = createGitWorkflow({
+      dotPath: resolve(unbornDir, ".git"),
+      allowEmpty: false,
+      rootPath: unbornDir,
+    });
+    await unbornWorkflow.applyModifications([join(unbornDir, "new.txt")]);
+    assert.equal((await unbornGit.exec(["diff", "--name-only", "--cached"])).trim(), "new.txt");
+  } finally {
+    await removeFile(unbornDir);
+  }
 });
