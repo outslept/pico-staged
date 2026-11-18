@@ -1,26 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PicoStagedError, TaskRunnerError } from "../src/errors.ts";
+import { ERROR_MESSAGES, PicoStagedError, TaskRunnerError } from "../src/errors.ts";
 
-test("PicoStagedError has correct name, type, and message", () => {
-  const err = new PicoStagedError("noConfig");
-  assert.equal(err.name, "PicoStagedError");
-  assert.equal(err.type, "noConfig");
-  assert.equal(err.message, "Create Pico Staged config.");
-});
+test("PicoStagedError formats static and parameterized messages", () => {
+  const noConfig = new PicoStagedError("noConfig");
+  assert.ok(noConfig instanceof Error);
+  assert.equal(noConfig.name, "PicoStagedError");
+  assert.equal(noConfig.type, "noConfig");
+  assert.equal(noConfig.message, ERROR_MESSAGES.noConfig);
 
-test("PicoStagedError formats file path argument", () => {
-  const err = new PicoStagedError("noFileConfig", "no-config.js");
-  assert.equal(err.message, "Pico Staged config file *no-config.js* is not found.");
-});
+  assert.equal(new PicoStagedError("invalidConfig").message, ERROR_MESSAGES.invalidConfig);
+  assert.equal(new PicoStagedError("noGitRepo").message, ERROR_MESSAGES.noGitRepo);
+  assert.equal(new PicoStagedError("noMatchingFiles").message, ERROR_MESSAGES.noMatchingFiles);
 
-test("PicoStagedError formats file bucket type", () => {
-  const err = new PicoStagedError("noFiles", "staged");
-  assert.equal(err.message, "No staged files found.");
+  assert.equal(
+    new PicoStagedError("noFileConfig", "no-config.js").message,
+    "Pico Staged config file *no-config.js* is not found.",
+  );
+  assert.equal(new PicoStagedError("noFiles", "staged").message, "No staged files found.");
 });
 
 test("TaskRunnerError has correct name and message", () => {
   const err = new TaskRunnerError("task error");
+  assert.ok(err instanceof Error);
   assert.equal(err.name, "TaskRunnerError");
   assert.equal(err.message, "task error");
 });
