@@ -28,10 +28,15 @@ afterEach(async () => {
   await removeFile(cwd);
 });
 
-test("returns empty paths when git directory is not found", async () => {
-  const git = createGit(cwd);
-  const paths = await git.getGitPaths({ cwd: "Z:\\non-existent-path-pico" });
-  assert.deepEqual(paths, { root: "", dot: "" });
+test("returns empty paths when directory is not a git repository", async () => {
+  const nonGitDir = await createTempDir("pico-non-git-");
+  try {
+    const git = createGit(nonGitDir);
+    const paths = await git.getGitPaths();
+    assert.deepEqual(paths, { root: "", dot: "" });
+  } finally {
+    await removeFile(nonGitDir);
+  }
 });
 
 test("resolves root and .git directory paths", async () => {
@@ -54,7 +59,7 @@ test("creates diff patch file and applies it", async () => {
   assert.equal((await stat(patchPath)).isFile(), true);
 });
 
-test("adds, checks out, and parses porcelain status", async () => {
+test("adds, checks out, and parses porcelain status including renames", async () => {
   const git = createGit(cwd);
   await appendFile("a.js", "let a = {};", cwd);
   await appendFile("b.js", "let b = {};", cwd);
@@ -73,33 +78,52 @@ test("adds, checks out, and parses porcelain status", async () => {
     { x: "A", y: " ", path: "b.js" },
     { x: "?", y: "?", path: "a.js" },
   ]);
+
+  await removeFile(join(cwd, "a.js"));
+  await execGit(["mv", "README.md", "DOCS.md"]);
+  const renameEntries = await git.status();
+  assert.deepEqual(renameEntries, [
+    { x: "R", y: " ", path: "DOCS.md", rename: "README.md" },
+    { x: "A", y: " ", path: "b.js" },
+  ]);
 });
 
-test("categorizes staged, unstaged, and changed files", async () => {
+test("categorizes staged, unstaged, deleted, and changed files", async () => {
   const git = createGit(cwd);
   await writeFile("README.md", "# Test\n## Staged\n", cwd);
   await git.add(["README.md"]);
   await writeFile("README.md", "# Test\n## Staged\n## Unstaged\n", cwd);
 
-  const staged = await git.stagedFiles();
-  assert.deepEqual(staged, {
+  assert.deepEqual(await git.stagedFiles(), {
     working: ["README.md"],
     deleted: [],
     changed: ["README.md"],
   });
 
-  const unstaged = await git.unstagedFiles();
-  assert.deepEqual(unstaged, {
+  assert.deepEqual(await git.unstagedFiles(), {
     working: ["README.md"],
     deleted: [],
     changed: ["README.md"],
   });
 
   await execGit(["commit", "-m", "second commit"]);
-  const changed = await git.changedFiles(["HEAD", "HEAD~1"]);
-  assert.deepEqual(changed, {
+  assert.deepEqual(await git.changedFiles(["HEAD", "HEAD~1"]), {
     working: ["README.md"],
     deleted: [],
+    changed: [],
+  });
+
+  await removeFile(join(cwd, "README.md"));
+  assert.deepEqual(await git.unstagedFiles(), {
+    working: [],
+    deleted: ["README.md"],
+    changed: [],
+  });
+
+  await git.add(["README.md"]);
+  assert.deepEqual(await git.stagedFiles(), {
+    working: [],
+    deleted: ["README.md"],
     changed: [],
   });
 });
