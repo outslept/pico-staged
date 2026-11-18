@@ -49,25 +49,19 @@ export function fixture(name: string): string {
   return resolve(DIRNAME, "../fixtures", name);
 }
 
-export interface MockStream extends Writable {
-  out: string;
+export class CaptureStream extends Writable {
+  out = "";
+
+  override _write(
+    chunk: Buffer | string,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void,
+  ): void {
+    this.out += chunk.toString();
+    callback();
+  }
 }
 
-export function createStdout(): MockStream {
-  let out = "";
-  const stream = new Writable({
-    write(chunk, _encoding, callback) {
-      out += chunk.toString();
-      callback();
-    },
-  }) as MockStream;
-
-  Object.defineProperty(stream, "out", {
-    get: () => out,
-    set: (val: string) => {
-      out = val;
-    },
-  });
-
-  return stream;
+export function createStdout(): CaptureStream {
+  return new CaptureStream();
 }
